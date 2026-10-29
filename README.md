@@ -1,6 +1,6 @@
 # Evolve Generalize
 
-#Live Demo: { https://gir8nn7wfqm2wk9wcnozrq.streamlit.app }
+# Live Demo: { https://gir8nn7wfqm2wk9wcnozrq.streamlit.app }
 
 **The Problem:** Current agent evolution frameworks optimize agent workspaces by mutating prompts, skills, and memory. However, they only evaluate agents on the *same* benchmark they trained on. This means an agent might achieve a high score by simply memorizing task-specific heuristics, rather than learning transferable intelligence.
 
