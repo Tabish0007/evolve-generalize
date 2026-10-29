@@ -5,10 +5,9 @@ from pathlib import Path
 # Must be the first Streamlit command
 st.set_page_config(page_title="Workspace Overfit | A-Evolve", layout="wide", initial_sidebar_state="expanded")
 
-# Custom CSS to kill the "Streamlit toy" look and make it look like a professional infra tool
+# Custom CSS
 st.markdown("""
 <style>
-    /* Global Typography */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
     
     html, body, [class*="css"] {
@@ -19,14 +18,12 @@ st.markdown("""
         font-family: 'JetBrains Mono', monospace !important;
     }
 
-    /* Kill default streamlit padding */
     .block-container {
         padding-top: 2rem;
         padding-bottom: 2rem;
         max-width: 1200px;
     }
 
-    /* Headers */
     h1, h2, h3 {
         font-weight: 600 !important;
         letter-spacing: -0.02em;
@@ -39,7 +36,6 @@ st.markdown("""
         margin-bottom: 1.5rem !important;
     }
 
-    /* Metric Cards */
     div[data-testid="metric-container"] {
         background-color: #111;
         border: 1px solid #333;
@@ -52,7 +48,6 @@ st.markdown("""
         font-size: 1.8rem !important;
     }
 
-    /* Tabs */
     .stTabs [data-baseweb="tab-list"] {
         gap: 24px;
         border-bottom: 1px solid #333;
@@ -70,13 +65,11 @@ st.markdown("""
         border-bottom: 2px solid #fff;
     }
 
-    /* Sidebar */
     section[data-testid="stSidebar"] {
         background-color: #0a0a0a;
         border-right: 1px solid #333;
     }
 
-    /* Expanders */
     .streamlit-expanderHeader {
         background-color: #111;
         border: 1px solid #333;
@@ -84,7 +77,6 @@ st.markdown("""
         font-weight: 500;
     }
     
-    /* Alerts */
     .stAlert {
         border-radius: 4px;
         border: 1px solid #333;
@@ -98,8 +90,6 @@ with st.sidebar:
     st.markdown("### `A-EVOLVE` / STRESS")
     st.markdown("---")
     st.markdown("""
-    **Objective:** Measure cross-benchmark generalization of evolved agent workspaces. 
-    
     **Environment:** 
     - Local `qwen2.5-coder:7b`
     - Ollama Backend
@@ -110,11 +100,19 @@ with st.sidebar:
 
 # Main Header
 st.title("Workspace Overfit Stress Test")
-st.markdown("`A-Evolve` mutates prompts, skills, and memory to optimize a target benchmark. This harness measures whether those mutations generalize, or if they simply overfit.")
 
-# Top level metrics (using placeholder numbers for the dashboard aesthetic, or real ones if you want)
+# --- NEW EXECUTIVE SUMMARY ---
+st.markdown("""
+**The Problem:** AI frameworks like `A-Evolve` automatically rewrite an AI agent's internal instructions (prompts, skills, and memory) to make it better at a specific task. But do these automated rewrites actually make the AI smarter, or does it just **overfit** (memorize) that one specific benchmark and fail at everything else?
+
+**What this does:** This project is a custom evaluation harness that tests AI agents for overfitting. It forces the agent to train on Task A, freezes its brain, and then tests it on Task B to see if the learned skills actually transfer.
+""")
+# ------------------------------
+
+st.markdown("<hr style='border: 1px solid #333; margin: 2rem 0;'>", unsafe_allow_html=True)
+
 col1, col2, col3, col4 = st.columns(4)
-col1.metric("Phase A Cycles", "15", "Evolve X")
+col1.metric("Phase A Cycles", "15", "Train")
 col2.metric("Phase B Cycles", "5", "Frozen")
 col3.metric("Phase C Cycles", "15", "Upper Bound")
 col4.metric("LLM Engine", "Ollama", "Local")
@@ -122,27 +120,30 @@ col4.metric("LLM Engine", "Ollama", "Local")
 st.markdown("<br>", unsafe_allow_html=True)
 
 # Tabs
-tab1, tab2, tab3 = st.tabs(["EXPERIMENT", "PATCHES & BUGS", "RAW JSON"])
+tab1, tab2, tab3 = st.tabs(["THE HARNESS", "PATCHES & BUGS", "RAW JSON"])
 
 with tab1:
-    st.markdown("### The Overfitting Signal")
-    st.markdown("The harness executes three phases. The delta between the seed baseline and the transferred workspace isolates the overfitting penalty.")
+    st.markdown("### The Evaluation Logic")
+    st.markdown("The harness isolates the 'overfitting penalty' by comparing three distinct phases:")
     
     st.code("""
-# Pseudo-code of the evaluation logic
+# 1. Baseline: Test raw agent on target benchmark
 baseline_score = eval(seed_workspace, Y)
+
+# 2. Transfer: Train on X, then test on Y
 transfer_score = eval(evolve(seed_workspace, X), Y)
+
+# 3. Upper Bound: Train on Y, then test on Y
 upper_bound    = eval(evolve(seed_workspace, Y), Y)
 
+# The Overfitting Signal
 overfit_gap = transfer_score - baseline_score
 headroom    = upper_bound - baseline_score
     """, language="python")
 
-    st.info("Note: The native SkillBench backend currently fails at the Docker container initialization step due to an upstream infrastructure_error. The harness logic is complete.")
-
 with tab2:
     st.markdown("### Upstream A-Evolve Bugs Identified")
-    st.markdown("Three critical issues were found in A-Evolve's local evaluation path and patched in this repository.")
+    st.markdown("While building the local Ollama pipeline, three critical issues were found in A-Evolve's evaluation path and patched in this repository.")
     
     with st.expander("Bug 1: Registry Module Mismatch"):
         st.markdown("""
