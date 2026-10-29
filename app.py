@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 
 # Must be the first Streamlit command
-st.set_page_config(page_title="Workspace Overfit | A-Evolve", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Evolve Generalize", layout="wide", initial_sidebar_state="expanded")
 
 # Custom CSS
 st.markdown("""
@@ -87,23 +87,23 @@ st.markdown("""
 
 # Sidebar
 with st.sidebar:
-    st.markdown("### `A-EVOLVE` / STRESS")
+    st.markdown("### `EVOLVE` / GENERALIZE")
     st.markdown("---")
     st.markdown("""
     **Environment:** 
     - Local `qwen2.5-coder:7b`
     - Ollama Backend
-    - A-Evolve (patched)
+    - Upstream framework patched
     """)
     st.markdown("---")
-    st.caption("v0.1.0 • [GitHub Repo](https://github.com/Tabish0007/test)")
+    st.caption("v0.1.0 • [GitHub Repo](https://github.com/Tabish0007/evolve-generalize)")
 
 # Main Header
-st.title("Workspace Overfit Stress Test")
+st.title("Evolve Generalize")
 
-# --- NEW EXECUTIVE SUMMARY ---
+# --- EXECUTIVE SUMMARY ---
 st.markdown("""
-**The Problem:** AI frameworks like `A-Evolve` automatically rewrite an AI agent's internal instructions (prompts, skills, and memory) to make it better at a specific task. But do these automated rewrites actually make the AI smarter, or does it just **overfit** (memorize) that one specific benchmark and fail at everything else?
+**The Problem:** AI evolution frameworks automatically rewrite an agent's internal instructions (prompts, skills, and memory) to make it better at a specific task. But do these automated rewrites actually make the AI smarter, or does it just **overfit** (memorize) that one specific benchmark and fail at everything else?
 
 **What this does:** This project is a custom evaluation harness that tests AI agents for overfitting. It forces the agent to train on Task A, freezes its brain, and then tests it on Task B to see if the learned skills actually transfer.
 """)
@@ -142,32 +142,32 @@ headroom    = upper_bound - baseline_score
     """, language="python")
 
 with tab2:
-    st.markdown("### Upstream A-Evolve Bugs Identified")
-    st.markdown("While building the local Ollama pipeline, three critical issues were found in A-Evolve's evaluation path and patched in this repository.")
+    st.markdown("### Upstream Bugs Identified")
+    st.markdown("While building the local Ollama pipeline, three critical issues were found in the framework's evaluation path and patched in this repository.")
     
     with st.expander("Bug 1: Registry Module Mismatch"):
         st.markdown("""
-        `BENCHMARK_REGISTRY` maps names to modules that don't exist in the shipped clone (`swe_verified`, `terminal2` at the top level).
+        The benchmark registry mapped names to modules that didn't exist in the shipped clone (e.g., `swe_verified`, `terminal2` at the top level).
         **Fix:** Bypass the registry and pass adapter instances directly.
         """)
         
     with st.expander("Bug 2: Silent Agent Fallback"):
         st.markdown("""
-        `_resolve_agent` looks up a Path string in `_SEED_REGISTRY`, misses, and silently falls back to `TerminalAgent` regardless of the workspace manifest.
-        **Fix:** Construct the agent instance directly (`SkillBenchAgent`) instead of passing a path string.
+        The agent resolver looked up a Path string in the seed registry, missed, and silently fell back to `TerminalAgent` regardless of the workspace manifest.
+        **Fix:** Construct the agent instance directly instead of passing a path string.
         """)
         
-    with st.expander("Bug 3: Hardcoded Bedrock"):
+    with st.expander("Bug 3: Hardcoded Cloud Provider"):
         st.markdown("""
-        `SkillBenchAgent` imports `BedrockModel` unconditionally, making local Ollama evaluation impossible.
-        **Fix:** Patch the agent to accept any OpenAI-compatible endpoint via `SKILLBENCH_BASE_URL`.
+        The solver agent imported `BedrockModel` unconditionally, making local Ollama evaluation impossible.
+        **Fix:** Patch the agent to accept any OpenAI-compatible endpoint via an environment variable.
         """)
 
 with tab3:
     st.markdown("### Raw Harness Output")
     st.markdown("Output from the harness running on local hardware.")
     st.warning("""
-    **Failure Mode:** SkillBench's native backend fails during Docker initialization. 
-    The failure classifier in `backends.py` swallows the traceback before the LLM is called. 
+    **Failure Mode:** The native benchmark backend fails during Docker initialization. 
+    The failure classifier swallows the traceback before the LLM is called. 
     This is a benchmark issue, not a harness issue.
     """)
