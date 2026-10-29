@@ -1,0 +1,24 @@
+{
+  "X_bench": "skill-bench",
+  "Y_bench": "skill-bench",
+  "seeds": [
+    0
+  ],
+  "cycles_a": 5,
+  "cycles_b": 2,
+  "model": "qwen2.5-coder:7b",
+  "seed_on_Y": [
+    0.0
+  ],
+  "X_evolved_on_Y": [
+    0.0
+  ],
+  "Y_evolved_on_Y": [
+    0.0
+  ],
+  "mean_seed_on_Y": 0.0,
+  "mean_X_evolved_on_Y": 0.0,
+  "mean_Y_evolved_on_Y": 0.0,
+  "transfer_gap": 0.0,
+  "headroom": 0.0
+}

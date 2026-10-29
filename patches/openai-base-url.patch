@@ -1,0 +1,26 @@
+diff --git a/agent_evolve/llm/openai.py b/agent_evolve/llm/openai.py
+index 2c7a286..e63371b 100644
+--- a/agent_evolve/llm/openai.py
++++ b/agent_evolve/llm/openai.py
+@@ -10,14 +10,19 @@ from .base import LLMMessage, LLMProvider, LLMResponse
+ class OpenAIProvider(LLMProvider):
+     """LLM provider using the OpenAI API (GPT / o-series models)."""
+ 
+-    def __init__(self, model: str = "gpt-4o", api_key: str | None = None):
++    def __init__(self, model: str = "gpt-4o", api_key: str | None = None, base_url: str | None = None):
+         try:
+             import openai
+         except ImportError:
+             raise ImportError("pip install openai  (or: pip install agent-evolve[openai])")
+ 
+         self.model = model
+-        self.client = openai.OpenAI(api_key=api_key) if api_key else openai.OpenAI()
++        kwargs = {}
++        if api_key:
++            kwargs["api_key"] = api_key
++        if base_url:
++            kwargs["base_url"] = base_url
++        self.client = openai.OpenAI(**kwargs) if kwargs else openai.OpenAI()
+ 
+     def complete(
+         self,

@@ -1,0 +1,123 @@
+diff --git a/agent_evolve/agents/skillbench/agent.py b/agent_evolve/agents/skillbench/agent.py
+index 6fdd68b..b64a411 100644
+--- a/agent_evolve/agents/skillbench/agent.py
++++ b/agent_evolve/agents/skillbench/agent.py
+@@ -1,9 +1,11 @@
+-"""SkillBench agent -- uses strands-agents with Bedrock Claude Sonnet.
++"""SkillBench agent.
+ 
+-Builds a Docker container for each SkillBench task, provides bash/python/
+-file/skill tools via ``docker exec``, and drives the solving loop through
+-a strands Agent.  After the agent finishes, verification is run
+-(test.sh -> reward.txt) and the result is embedded in the trajectory.
++Originally Bedrock-only. Patched to route the strands solver through an
++OpenAI-compatible endpoint so local Ollama can drive it; the Bedrock path
++is kept as a fallback when no base_url is configured.
++
++The container execution layer (test.sh verification) still lives in the
++backend and still needs Docker. This file only controls the LLM.
+ """
+ 
+ from __future__ import annotations
+@@ -22,6 +24,11 @@ except Exception as exc:  # pragma: no cover - optional runtime dependency
+     BedrockModel = None  # type: ignore[assignment]
+     _STRANDS_IMPORT_ERROR = exc
+ 
++try:
++    from strands.models.openai import OpenAIModel
++except Exception:  # pragma: no cover - older strands builds
++    OpenAIModel = None  # type: ignore[assignment]
++
+ from ...protocol.base_agent import BaseAgent
+ from ...types import Task, Trajectory
+ from .repo import resolve_skillbench_paths
+@@ -48,6 +55,9 @@ class SkillBenchAgent(BaseAgent):
+       4. Runs the strands Agent to solve the task
+       5. Runs verification (test.sh)
+       6. Returns a Trajectory with the result
++
++    The LLM backing step 4 is configurable: Bedrock by default, or any
++    OpenAI-compatible endpoint (Ollama, Groq, vLLM) when base_url is set.
+     """
+ 
+     def __init__(
+@@ -74,6 +84,8 @@ class SkillBenchAgent(BaseAgent):
+         retry_max_wait_sec: float = 120.0,
+         write_episodic_memory: bool = False,
+         skill_select_limit: int = 0,
++        base_url: str | None = None,
++        api_key: str | None = None,
+     ):
+         super().__init__(workspace_dir)
+         self.skill_select_limit = skill_select_limit
+@@ -99,6 +111,8 @@ class SkillBenchAgent(BaseAgent):
+         self.retry_min_wait_sec = float(retry_min_wait_sec)
+         self.retry_max_wait_sec = float(retry_max_wait_sec)
+         self.write_episodic_memory = write_episodic_memory
++        self.base_url = base_url or os.environ.get("SKILLBENCH_BASE_URL")
++        self.api_key = api_key or os.environ.get("SKILLBENCH_API_KEY", "ollama")
+ 
+     # ── Prompt assembly ──────────────────────────────────────────────
+ 
+@@ -134,8 +148,6 @@ class SkillBenchAgent(BaseAgent):
+         parts = [self.system_prompt]
+ 
+         if self.memories:
+-            # Include insights from evolved memories — these help the solver
+-            # learn from past failures without needing full skill content.
+             memory_lines: list[str] = []
+             for m in self.memories[-15:]:
+                 insight = m.get("insight") or m.get("content", "")
+@@ -147,19 +159,40 @@ class SkillBenchAgent(BaseAgent):
+ 
+         return "\n".join(parts)
+ 
+-    def _build_strands_agent(self, tools: list) -> Agent:
+-        """Create a strands Agent with BedrockModel and container tools."""
++    def _build_model(self):
++        """Return a strands model: OpenAI-compatible if base_url set, else Bedrock."""
++        if self.base_url:
++            if OpenAIModel is None:
++                raise ModuleNotFoundError(
++                    "strands.models.openai is unavailable; upgrade strands-agents "
++                    "or unset SKILLBENCH_BASE_URL to fall back to Bedrock."
++                )
++            return OpenAIModel(
++                client_args={
++                    "base_url": self.base_url,
++                    "api_key": self.api_key,
++                },
++                model_id=self.model_id,
++                params={"max_tokens": self.max_tokens},
++            )
+         if BedrockModel is None:
+             raise ModuleNotFoundError(
+                 "SkillBenchAgent requires optional dependency 'strands-agents' for native execution."
+             ) from _STRANDS_IMPORT_ERROR
+-        model = BedrockModel(
++        return BedrockModel(
+             model_id=self.model_id,
+             region_name=self.region,
+             max_tokens=self.max_tokens,
+         )
++
++    def _build_strands_agent(self, tools: list) -> Agent:
++        """Create a strands Agent with the configured model and container tools."""
++        if Agent is Any:
++            raise ModuleNotFoundError(
++                "SkillBenchAgent requires optional dependency 'strands-agents' for native execution."
++            ) from _STRANDS_IMPORT_ERROR
+         return Agent(
+-            model=model,
++            model=self._build_model(),
+             system_prompt=self._build_system_prompt(),
+             tools=tools,
+         )
+@@ -257,7 +290,6 @@ class SkillBenchAgent(BaseAgent):
+         """Solve a SkillBench task using current execution mode."""
+         runtime_backend = self.execution_mode
+         if runtime_backend == "dual":
+-            # In dual mode, main training/gating path remains native.
+             runtime_backend = "native"
+         if runtime_backend not in ("native", "harbor"):
+             logger.warning(
