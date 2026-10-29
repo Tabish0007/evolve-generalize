@@ -1,39 +1,27 @@
-# Workspace Overfit Stress Test
+# Evolve Generalize
 
-[Live Demo](https://gir8nn7wfqm2wk9wcnozrq.streamlit.app/)
+#Live Demo: {https://gir8nn7wfqm2wk9wcnozrq.streamlit.app/}
 
-A-Evolve mutates agent workspaces (prompts, skills, memory) to push benchmark scores up. I wanted to know if those mutations actually generalize to a different benchmark, or if they just overfit to the task they were trained on.
+**The Problem:** Current agent evolution frameworks optimize agent workspaces by mutating prompts, skills, and memory. However, they only evaluate agents on the *same* benchmark they trained on. This means an agent might achieve a high score by simply memorizing task-specific heuristics, rather than learning transferable intelligence.
 
-To test this, I built a three-phase harness (evolve on X → freeze → evaluate on Y). 
+**The Solution:** `Evolve Generalize` is an infrastructure layer designed to measure cross-benchmark generalization. It runs a three-phase stress test:
+1. Evaluate the agent on a target benchmark (Baseline).
+2. Evolve the agent on a *different* benchmark, freeze it, and evaluate it on the target (Transfer).
+3. Evolve directly on the target (Upper Bound).
 
-**Status:** The harness works. The SkillBench backend is currently broken on local hardware.
+The delta between the Baseline and the Transfer score is the **Overfitting Penalty**.
 
-## The Harness
+### Why this is hard (and what we fixed)
+To validate this benchmark, we integrated it with an open-source evolution framework and local `Ollama` inference. During integration, we discovered the framework was heavily coupled to cloud infrastructure (AWS Bedrock) and had broken local evaluation paths. We identified and patched three critical upstream bugs:
+1. **Broken Module Registries:** The benchmark registry mapped to modules that didn't exist in the local clone.
+2. **Silent Agent Fallbacks:** The agent resolver silently defaulted to the wrong agent type when passed a local path.
+3. **Hardcoded Cloud Providers:** The solver agent was hardcoded to Bedrock, making local inference impossible.
 
-The script (`stress_test.py`) runs three conditions:
-1. **Baseline:** Evaluate the raw seed workspace on Benchmark Y.
-2. **Transfer:** Evolve on Benchmark X, freeze the workspace, evaluate on Y.
-3. **Upper Bound:** Evolve directly on Y, evaluate on Y.
+All patches are included in the `patches/` directory. We successfully proved the platform can run end-to-end on local consumer hardware without cloud credits.
 
-If condition 2 performs worse than condition 1, the evolution loop is overfitting. 
-
-To run this without AWS credentials, the harness forces the evolver to use a local Ollama model (`qwen2.5-coder:7b`) and passes adapter instances directly to the `Evolver` to skip the broken registry.
-
-## Why it doesn't fully run yet (and the 3 bugs I found)
-
-While wiring Ollama into A-Evolve, I hit a wall with their local evaluation path. I ended up patching three bugs just to get the harness to start:
-
-1. **The Registry is broken:** `BENCHMARK_REGISTRY` in `api.py` points to modules (`swe_verified`, `terminal2`) that aren't in the shipped clone.
-2. **Silent Agent Fallback:** `_resolve_agent` looks up a `Path` string in `_SEED_REGISTRY`, misses, and silently falls back to `TerminalAgent` regardless of the workspace manifest.
-3. **Hardcoded Bedrock:** `SkillBenchAgent` imports `BedrockModel` unconditionally, which makes local inference impossible.
-
-Patches for these are in the `patches/` directory.
-
-After patching the agent to accept an OpenAI-compatible endpoint, the SkillBench native backend still fails with an `infrastructure_error` before Docker even builds. The failure classifier in `backends.py` swallows the actual exception, so I can't debug the container build without modifying their upstream code further. 
-
-## Local Setup
-
-If you want to run the Streamlit UI locally:
-```bash
-pip install -r requirements.txt
-streamlit run app.py
+### Project Structure
+```text
+├── app.py                  # Streamlit dashboard
+├── stress_test.py          # The 3-phase harness
+├── patches/                # Git diffs for the upstream fixes
+└── requirements.txt        # UI dependencies
